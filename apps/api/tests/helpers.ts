@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/db';
-import { EvolutionTransport } from '../src/modules/whatsapp/client';
+import { EvolutionError, EvolutionTransport } from '../src/modules/whatsapp/client';
 import { setTransport } from '../src/modules/whatsapp/service';
 
 export const app = createApp();
@@ -37,7 +37,7 @@ export class FakeTransport implements EvolutionTransport {
   created = 0;
   webhookSet: { url: string; secret: string } | null = null;
   exists = false;
-  private guard() { if (!this.reachable) throw new Error('Evolution API indisponível (simulado)'); }
+  private guard() { if (!this.reachable) throw new EvolutionError('Evolution API indisponível (simulado)'); }
   async connectionState() { this.guard(); return this.state; }
   async connect() { this.guard(); this.qrCalls++; return { base64: 'data:image/png;base64,QRSIMULADO', count: 1 }; }
   async logout() { this.guard(); this.loggedOut++; this.state = 'close'; }
@@ -47,7 +47,7 @@ export class FakeTransport implements EvolutionTransport {
   async instanceExists() { this.guard(); return this.exists; }
   async sendText(number: string, text: string) {
     this.guard();
-    if (this.failSend) throw new Error('falha simulada de envio');
+    if (this.failSend) throw new EvolutionError('falha simulada de envio', 500);
     this.sent.push({ number, text });
     return { id: 'SIM' + this.sent.length };
   }

@@ -23,6 +23,8 @@ adminRouter.get('/search', wrap(async (req, res) => {
   res.json({ tasks, tickets, contacts, messages, quotes });
 }));
 
+adminRouter.get('/team', wrap(async (_req, res) => res.json(await prisma.user.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }))));
+
 adminRouter.get('/notifications', wrap(async (_req, res) => res.json(await prisma.notification.findMany({ orderBy: { createdAt: 'desc' }, take: 30 }))));
 adminRouter.post('/notifications/read-all', wrap(async (_req, res) => { await prisma.notification.updateMany({ where: { read: false }, data: { read: true } }); res.json({ ok: true }); }));
 
