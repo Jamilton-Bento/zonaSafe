@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 FILE="${1:-}"; TARGET="${2:-${CENTRAL_DB:-central}}"; CONFIRM="${3:-}"
 PG_SUPERUSER="${PG_SUPERUSER:-postgres}"
 [ -f "$FILE" ] || { echo "Arquivo não encontrado: $FILE" >&2; exit 1; }
-gzip -t "$FILE"
+case "$FILE" in *.gz) gzip -t "$FILE"; CAT=zcat;; *) CAT=cat;; esac
 
 if [ "$CONFIRM" != "--yes" ]; then
   echo "ATENÇÃO: isto vai APAGAR e recriar o conteúdo do banco '$TARGET'."
@@ -22,5 +22,5 @@ USER_ARGS=(); [ -n "${PG_LOCAL:-}" ] || USER_ARGS=(-U "$PG_SUPERUSER")
 if ! pg psql "${USER_ARGS[@]}" -tAc "SELECT 1 FROM pg_database WHERE datname='$TARGET'" | grep -q 1; then
   pg createdb "${USER_ARGS[@]}" "$TARGET"
 fi
-zcat "$FILE" | pg psql "${USER_ARGS[@]}" -v ON_ERROR_STOP=1 -q -d "$TARGET" > /dev/null
+$CAT "$FILE" | pg psql "${USER_ARGS[@]}" -v ON_ERROR_STOP=1 -q -d "$TARGET" > /dev/null
 echo "Restauração concluída em '$TARGET'."
