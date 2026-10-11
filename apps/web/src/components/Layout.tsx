@@ -7,7 +7,7 @@ import { fmtDateTime, ROLE } from '../lib/format';
 
 const NAV = [
   ['/', 'Dashboard', '📊'], ['/mensagens', 'Central de mensagens', '💬'], ['/chamados', 'Chamados', '🎫'], ['/tarefas', 'Tarefas', '✅'],
-  ['/orcamentos', 'Orçamentos', '🧾'], ['/contatos', 'Contatos', '👤'], ['/empresas', 'Empresas e filiais', '🏢'],
+  ['/assistente', 'Assistente IA', '🤖'], ['/orcamentos', 'Orçamentos', '🧾'], ['/contatos', 'Contatos', '👤'], ['/empresas', 'Empresas e filiais', '🏢'],
   ['/relatorios', 'Relatórios', '📑'], ['/whatsapp', 'Integração WhatsApp', '📱'], ['/configuracoes', 'Configurações', '⚙️'],
 ] as const;
 

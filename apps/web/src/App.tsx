@@ -14,6 +14,7 @@ import Contacts from './pages/Contacts';
 import Organizations from './pages/Organizations';
 import Reports from './pages/Reports';
 import Whatsapp from './pages/Whatsapp';
+import Assistant from './pages/Assistant';
 import Settings from './pages/Settings';
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="chamados" element={<Tickets />} />
         <Route path="chamados/:id" element={<TicketDetail />} />
         <Route path="tarefas" element={<Tasks />} />
+        <Route path="assistente" element={<Assistant />} />
         <Route path="orcamentos" element={<Quotes />} />
         <Route path="orcamentos/:id" element={<QuoteDetail />} />
         <Route path="contatos" element={<Contacts />} />

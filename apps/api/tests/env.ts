@@ -9,3 +9,6 @@ process.env.EVOLUTION_INSTANCE = 'instancia-teste';
 process.env.WA_MIN_SEND_INTERVAL_MS = '0';
 process.env.WA_CONNECT_COOLDOWN_MS = '0';
 process.env.ENABLE_SCHEDULER = 'false';
+process.env.GEMINI_API_KEY = 'chave-gemini-de-teste';
+process.env.AI_MIN_INTERVAL_MS = '0';
+process.env.AI_DAILY_LIMIT = '5';

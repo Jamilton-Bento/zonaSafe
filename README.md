@@ -80,6 +80,27 @@ Os contêineres usam `restart: unless-stopped`: voltam sozinhos após reiniciar 
 * Reconexão **somente manual**, com intervalo mínimo de 30 s e no máximo 5 tentativas/hora. Não há laço de reconexão automática.
 * Nenhuma mensagem é enviada sem destino configurado e testado por um administrador. Não há envio em massa.
 
+## 4.1 Assistente de IA (Gemini, plano gratuito)
+
+A IA lê cada mensagem recebida e decide: **chamado**, **tarefa**, **orçamento**, **informativo** ou **conversa**.
+
+| O que a IA faz sozinha | O que exige você |
+|---|---|
+| Abre chamado/tarefa quando a confiança ≥ limiar (padrão 80%, ajustável) | Abaixo do limiar: só **sugere**; você clica "Virar chamado/tarefa/orçamento" |
+| Vincula mensagem de continuação ao chamado aberto do mesmo solicitante (sem duplicar) | **Toda resposta ao usuário**: a IA redige um rascunho, **você aprova (e pode editar)** antes de enviar |
+| Monta a **solicitação** de orçamento (produto, quantidade, especificações) | **Ofertas e preços**: a IA nunca inventa; você cadastra. Opcional: cole a proposta do fornecedor e a IA preenche o formulário para você conferir |
+| Solicitações da diretoria nunca ficam abaixo de prioridade Alta (regra fixa, não da IA) | |
+
+**Como ativar:**
+1. Crie uma chave em <https://aistudio.google.com/apikey> **sem habilitar faturamento** e coloque em `GEMINI_API_KEY` no `.env`; rode `docker compose up -d` para recarregar o back-end.
+2. Em **Assistente IA**, marque *Ativar a IA*. Ela nasce **desativada**.
+3. Se o plano gratuito do Google mudar o nome dos modelos, ajuste `GEMINI_MODEL`.
+
+**Proteções:** limite diário (`AI_DAILY_LIMIT`, padrão 150) e intervalo entre chamadas para respeitar a cota gratuita; pausa automática após 5 falhas seguidas (com notificação); e-mails, CPF/CNPJ, telefones e números longos são mascarados antes do envio; o texto das mensagens é tratado como **dado não confiável** (defesa contra injeção de prompt) e a resposta da IA é validada por esquema, sem poder executar nenhuma ação além das listadas; grupos só são analisados se você habilitar e nunca recebem rascunho de resposta.
+
+> ⚠️ **Privacidade:** isto muda a regra original "tudo local". Com a IA ativa, o texto das mensagens (já mascarado) **sai do seu computador para o Google**; no plano gratuito, o Google pode usá-lo para melhorar seus produtos. Avise os usuários e deixe a IA desativada se houver conteúdo sigiloso. Se preferir 100% local, o provedor está isolado em `apps/api/src/modules/ai/provider.ts` e pode ser trocado por um modelo local (ex.: Ollama).
+> A IA pode errar. Por isso as respostas passam por você e tudo que ela cria fica marcado no histórico como "IA".
+
 ## 5. Funcionalidades
 
 Dashboard ("O que preciso resolver agora?") · Central de mensagens (busca, filtros, criar tarefa/chamado, vincular, marcar analisada) · Chamados (help desk completo, comentários, histórico) · Tarefas (8 visualizações, edição rápida de status/prioridade/prazo, destaque de atrasos) · Orçamentos (comparação de fornecedores, cálculo automático, PDF para a diretoria) · Contatos · Empresas, filiais e fornecedores · Relatórios programados · Integração WhatsApp · Configurações (usuários, retenção, auditoria) · Pesquisa global · Notificações.
@@ -109,7 +130,7 @@ O backup copia os dados do PostgreSQL. Guarde os arquivos de `backups\` **fora**
 ```bash
 # banco local para testes (exemplo): PostgreSQL 16 com usuário/banco "central"/"central_test"
 cd apps/api && npm ci && DATABASE_URL=postgresql://central:central_test@localhost:5432/central_test?schema=public npx prisma migrate deploy
-npm test                      # 52 testes de integração (back-end)
+npm test                      # 75 testes de integração (back-end)
 cd ../web && npm ci && npm test && npm run build
 ```
 Resultados e lacunas: [docs/TESTES.md](docs/TESTES.md). Endpoints: [docs/API.md](docs/API.md).
@@ -131,7 +152,7 @@ Resultados e lacunas: [docs/TESTES.md](docs/TESTES.md). Endpoints: [docs/API.md]
 2. **Evolution API não testada com conta real.** Rotas/corpos conferidos só parcialmente com a documentação; a imagem `v2.3.7` foi escolhida por ser a última estável sem licença. Healthcheck do contêiner usa `wget` (esperado na imagem); se ficar `unhealthy` mesmo funcionando, ajuste o teste em `docker-compose.yml`.
 3. Risco inerente de bloqueio da conta (conexão não oficial).
 4. Mídias (imagem, áudio, documento) não são baixadas; áudios não são transcritos.
-5. Não há classificação automática por IA: **você decide** o que vira tarefa/chamado (por escolha, para não criar tarefas para toda mensagem).
+5. **IA (Gemini) não testada com a API real**: os testes usam um provedor simulado; o formato da chamada REST do Gemini e o nome do modelo (`GEMINI_MODEL`) precisam ser conferidos na primeira execução. A cota/limites do plano gratuito são do Google e podem mudar.
 6. Relatórios agendados não são recuperados retroativamente se o computador estiver desligado.
 7. O banco da Evolution e o do sistema compartilham a mesma instância PostgreSQL (bancos e usuários separados). O script de criação (`infra/postgres/init-databases.sh`) só roda na **primeira** criação do volume; se já houver um volume antigo do PostgreSQL, crie os bancos/usuários manualmente.
 8. Interface sem testes automatizados de ponta a ponta (apenas verificação manual com navegador).
@@ -141,4 +162,5 @@ Resultados e lacunas: [docs/TESTES.md](docs/TESTES.md). Endpoints: [docs/API.md]
 
 * **Evolution API/WhatsApp:** número secundário, leitura do QR Code e, se desejar relatórios, o JID do grupo de destino (aparece na Central de mensagens depois que alguém escreve no grupo).
 * **HTTPS/acesso remoto:** não incluído (o sistema é local). Se precisar, use um proxy reverso próprio e `COOKIE_SECURE=true`.
+* **IA/Gemini:** chave gratuita do Google AI Studio (`GEMINI_API_KEY`) e ativação em *Assistente IA*.
 * **Lojas (Mercado Livre, Magazine Luiza):** apenas links de busca; sem integração por API.

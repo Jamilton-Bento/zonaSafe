@@ -16,6 +16,7 @@ import { whatsappRouter } from './modules/whatsapp/routes';
 import { webhookRouter } from './modules/whatsapp/webhook';
 import { quotesRouter } from './modules/quotes/routes';
 import { reportsRouter } from './modules/reports/routes';
+import { aiRouter } from './modules/ai/routes';
 import { adminRouter } from './modules/admin/routes';
 
 export function createApp() {
@@ -51,6 +52,7 @@ export function createApp() {
   priv.use('/tickets', ticketsRouter);
   priv.use('/messages', messagesRouter);
   priv.use('/quotes', quotesRouter);
+  priv.use('/ai', aiRouter);
   priv.use('/reports', reportsRouter);
   priv.use('/whatsapp', requireRole('ADMIN', 'TECNICO'), whatsappRouter);
   priv.use('/', orgsRouter);

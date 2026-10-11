@@ -21,6 +21,12 @@ const schema = z.object({
   WA_MAX_CONSECUTIVE_FAILURES: z.coerce.number().default(3),
   WA_CONNECT_COOLDOWN_MS: z.coerce.number().default(30000),
   RETENTION_MESSAGE_DAYS: z.coerce.number().default(180),
+  // IA (Gemini, plano gratuito). Sem chave, a IA fica indisponível e o resto do sistema segue normal.
+  GEMINI_API_KEY: z.string().default(''),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  AI_MIN_INTERVAL_MS: z.coerce.number().default(5000),
+  AI_DAILY_LIMIT: z.coerce.number().default(150),
+  AI_MAX_CONSECUTIVE_FAILURES: z.coerce.number().default(5),
   ENABLE_SCHEDULER: bool('true'),
 });
 

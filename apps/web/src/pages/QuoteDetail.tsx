@@ -21,6 +21,18 @@ function OfferForm({ quote, offer, onClose }: { quote: any; offer?: any; onClose
     availability: offer?.availability ?? '', url: offer?.url ?? '', meetsSpecs: offer?.meetsSpecs ?? true, consultedAt: offer ? offer.consultedAt.slice(0, 10) : todayInput(),
   });
   const [localError, setLocalError] = useState('');
+  const [paste, setPaste] = useState('');
+  const [aiNotice, setAiNotice] = useState('');
+  const extract = useMutation({
+    mutationFn: () => api.post<any>('/ai/extract-offer', { text: paste }),
+    onSuccess: ({ draft: d, notice }) => {
+      const money = (c: number | null) => (c == null ? null : String(c / 100).replace('.', ','));
+      setF((p) => ({ ...p, supplierName: d.supplierName ?? p.supplierName, product: d.product ?? p.product, brandModel: d.brandModel ?? p.brandModel, specs: d.specs ?? p.specs,
+        unit: money(d.unitPriceCents) ?? p.unit, quantity: d.quantity ? String(d.quantity) : p.quantity, shipping: money(d.shippingCents) ?? p.shipping,
+        deliveryDays: d.deliveryDays != null ? String(d.deliveryDays) : p.deliveryDays, warranty: d.warranty ?? p.warranty, availability: d.availability ?? p.availability, url: d.url ?? p.url }));
+      setAiNotice(notice);
+    },
+  });
   const unit = parseBRLToCents(f.unit), ship = parseBRLToCents(f.shipping || '0'), qty = parseInt(f.quantity, 10);
   const total = unit != null && ship != null && qty > 0 ? unit * qty + ship : null;
   const save = useMutation({
@@ -41,6 +53,13 @@ function OfferForm({ quote, offer, onClose }: { quote: any; offer?: any; onClose
   const t = (k: keyof typeof f) => ({ value: f[k] as string, onChange: (e: any) => setF({ ...f, [k]: e.target.value }) });
   return (
     <Modal title={offer ? 'Editar oferta' : 'Cadastrar oferta'} onClose={onClose} wide>
+      {!offer && (
+        <div className="mb-3 rounded-md border border-dashed p-3">
+          <Field label="Opcional: cole aqui a proposta/e-mail do fornecedor e a IA preenche os campos (você confere antes de salvar)"><textarea className="input" rows={3} value={paste} onChange={(e) => setPaste(e.target.value)} /></Field>
+          <div className="mt-2 flex items-center gap-2"><button type="button" className="btn-secondary" disabled={paste.trim().length < 10 || extract.isPending} onClick={() => extract.mutate()}>{extract.isPending ? 'Lendo…' : 'Preencher com IA'}</button>{aiNotice && <span className="text-xs text-amber-700">{aiNotice}</span>}</div>
+          <ErrorBox error={extract.error} />
+        </div>
+      )}
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <Field label="Fornecedor *"><input className="input" required {...t('supplierName')} /></Field>
         <Field label="Produto *"><input className="input" required {...t('product')} /></Field>

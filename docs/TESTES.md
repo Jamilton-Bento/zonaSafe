@@ -2,7 +2,7 @@
 
 Executados em 11/10/2026 em ambiente Linux com PostgreSQL 16 local (banco `central_test`, descartável). **Todos os eventos do WhatsApp nos testes são SIMULADOS** (`tests/helpers.ts`: `simulatedUpsert`, `FakeTransport`); nenhuma conta real foi usada.
 
-## Automatizados — back-end (Vitest + Supertest): 52 de 52 passaram
+## Automatizados — back-end (Vitest + Supertest): 75 de 75 passaram
 
 ```
 ✓ tests/whatsapp.test.ts > Webhooks (eventos SIMULADOS) > rejeita eventos sem segredo ou com segredo errado
@@ -92,3 +92,8 @@ Login → registro rápido de tarefa → concluir → aba "Concluídas" → cria
 - Evolution API real (imagem `evoapicloud/evolution-api:v2.3.7`), QR Code real e envio/recebimento reais no WhatsApp.
 - Build das imagens Docker e `docker compose up` completo (veja item 1).
 - Nomes de rotas/corpos da Evolution API v2.3.7 foram escritos a partir de conhecimento da API v2 e conferência parcial no código-fonte oficial; a documentação oficial (`doc.evolution-api.com`) não estava acessível a partir do ambiente de desenvolvimento. **Confira na primeira execução** (veja README, seção "Primeira conexão").
+
+## IA (23 testes novos em `tests/ai.test.ts`, provedor **SIMULADO**)
+Desativada por padrão · permissões · mascaramento de dados pessoais · abre chamado com confiança alta · só sugere com confiança baixa · informativo não gera tarefa · vínculo a chamado aberto sem duplicar · recusa vínculo com chamado de outro solicitante · orçamento sem preços inventados · prioridade mínima para diretoria · injeção de prompt/JSON inválido/esquema inválido rejeitados · idempotência · grupos · limite diário · disjuntor por falhas e retomada · reanálise manual · rascunhos (aprovar envia ao contato certo, clique duplo envia uma vez, envio bloqueado preserva o rascunho, descartar, leitor sem permissão) · extração de oferta.
+
+**Não testado:** chamadas reais à API do Gemini (sem chave/egress no ambiente de desenvolvimento) e a qualidade das classificações com mensagens reais. Recomenda-se começar com o limiar em 90% e revisar a aba "Análises recentes" por alguns dias.

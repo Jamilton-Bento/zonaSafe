@@ -231,6 +231,8 @@ model Message {
   createdAt      DateTime          @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  aiAnalysis   AiAnalysis?
+  aiDrafts     AiDraft[]
   task         Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
   ticket       Ticket?      @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
@@ -457,4 +459,53 @@ model Setting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+enum AiStatus {
+  CONCLUIDA
+  FALHA
+}
+
+enum DraftStatus {
+  PENDENTE
+  ENVIADO
+  DESCARTADO
+  FALHA
+}
+
+// Resultado da análise da IA sobre uma mensagem (uma por mensagem)
+model AiAnalysis {
+  id         String   @id @default(cuid())
+  messageId  String   @unique
+  status     AiStatus
+  intent     String?  // chamado | tarefa | orcamento | informativo | conversa
+  confidence Float?
+  summary    String?
+  result     Json?    // saída validada da IA (usada para "aceitar sugestão")
+  action     String?  // nenhuma | sugestao | chamado_criado | tarefa_criada | orcamento_criado | chamado_vinculado
+  ticketId   String?
+  taskId     String?
+  quoteId    String?
+  error      String?
+  model      String?
+  createdAt  DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+// Rascunho de resposta ao usuário: só é enviado após aprovação humana
+model AiDraft {
+  id             String      @id @default(cuid())
+  messageId      String
+  conversationId String
+  text           String
+  status         DraftStatus @default(PENDENTE)
+  error          String?
+  createdAt      DateTime    @default(now())
+  decidedAt      DateTime?
+  decidedBy      String?
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }

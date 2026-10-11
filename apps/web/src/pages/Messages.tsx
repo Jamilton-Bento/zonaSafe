@@ -37,6 +37,7 @@ export default function Messages() {
   const contacts = useContacts().data ?? [];
   const { data, isLoading, error } = useQuery({ queryKey: ['messages', f], queryFn: () => api.get<any>(`/messages${qs(f)}`), refetchInterval: 20_000 });
   const mark = useMutation({ mutationFn: ({ id, processing }: any) => api.patch<any>(`/messages/${id}`, { processing }), onSuccess: (m) => { setSel(m); qc.invalidateQueries({ queryKey: ['messages'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); } });
+  const analyze = useMutation({ mutationFn: (id: string) => api.post(`/ai/messages/${id}/analyze`), onSuccess: () => { qc.invalidateQueries(); setSel(null); } });
   const del = useMutation({ mutationFn: (id: string) => api.del(`/messages/${id}`), onSuccess: () => { setMode(null); setSel(null); qc.invalidateQueries(); } });
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value, page: 1 });
   const afterConvert = (r: any) => { setSel(null); qc.invalidateQueries(); return r; };
@@ -55,7 +56,7 @@ export default function Messages() {
       <div className="card overflow-x-auto">
         {isLoading ? <Spinner /> : !data?.items.length ? <Empty>Nenhuma mensagem encontrada. Se a integração do WhatsApp ainda não foi conectada, veja a página “Integração WhatsApp”.</Empty> : (
           <table className="w-full">
-            <thead className="border-b bg-slate-50"><tr><th className="th">Data</th><th className="th">Contato / grupo</th><th className="th">Conteúdo</th><th className="th">Tipo</th><th className="th">Status</th><th className="th">Vínculos</th></tr></thead>
+            <thead className="border-b bg-slate-50"><tr><th className="th">Data</th><th className="th">Contato / grupo</th><th className="th">Conteúdo</th><th className="th">Tipo</th><th className="th">Status</th><th className="th">IA</th><th className="th">Vínculos</th></tr></thead>
             <tbody className="divide-y">{data.items.map((m: any) => (
               <tr key={m.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSel(m)}>
                 <td className="td whitespace-nowrap">{fmtDateTime(m.sentAt)}</td>
@@ -64,6 +65,7 @@ export default function Messages() {
                 <td className="td max-w-md truncate">{m.body ?? <i className="text-slate-400">[{TYPE_LABEL[m.type] ?? m.type}]</i>}{m.edited && <span className="ml-1 text-xs text-slate-400">(editada)</span>}</td>
                 <td className="td">{TYPE_LABEL[m.type] ?? m.type}</td>
                 <td className="td"><Badge tone={tone(m.processing)}>{PROCESSING[m.processing]}</Badge></td>
+                <td className="td text-xs">{m.aiAnalysis?.status === 'CONCLUIDA' ? <Badge tone="blue">{m.aiAnalysis.intent} {Math.round((m.aiAnalysis.confidence ?? 0) * 100)}%</Badge> : m.aiAnalysis ? <Badge tone="red">falhou</Badge> : '—'}</td>
                 <td className="td text-xs">{m.ticket && <div>Chamado #{m.ticket.number}</div>}{m.task && <div>Tarefa #{m.task.number}</div>}</td>
               </tr>))}</tbody>
           </table>
@@ -91,12 +93,14 @@ export default function Messages() {
             {sel.ticket && <div>Chamado: <Link className="text-brand-700 hover:underline" to={`/chamados/${sel.ticket.id}`}>#{sel.ticket.number} {sel.ticket.title}</Link></div>}
             {sel.task && <div>Tarefa: <Link className="text-brand-700 hover:underline" to="/tarefas">#{sel.task.number} {sel.task.title}</Link></div>}
           </div>
-          <ErrorBox error={mark.error} />
+          {sel.aiAnalysis?.status === 'CONCLUIDA' && <div className="mb-3 rounded-md bg-blue-50 p-2 text-sm"><b>IA:</b> {sel.aiAnalysis.intent} ({Math.round((sel.aiAnalysis.confidence ?? 0) * 100)}%) — {sel.aiAnalysis.summary}</div>}
+          <ErrorBox error={mark.error ?? analyze.error} />
           {canWrite && (
             <div className="flex flex-wrap gap-2">
               <button className="btn-primary" onClick={() => setMode('task')}>Criar tarefa</button>
               <button className="btn-primary" onClick={() => setMode('ticket')}>Criar chamado</button>
               <button className="btn-secondary" onClick={() => setMode('link')}>Vincular a tarefa existente</button>
+              {sel.direction === 'ENTRADA' && (!sel.aiAnalysis || sel.aiAnalysis.status === 'FALHA') && <button className="btn-secondary" disabled={analyze.isPending} onClick={() => analyze.mutate(sel.id)}>{analyze.isPending ? 'Analisando…' : 'Analisar com IA'}</button>}
               <button className="btn-secondary" onClick={() => mark.mutate({ id: sel.id, processing: 'ANALISADA' })}>Marcar como analisada</button>
               <button className="btn-secondary" onClick={() => mark.mutate({ id: sel.id, processing: 'IGNORADA' })}>Sem necessidade de ação</button>
               {isAdmin && <button className="btn-secondary text-red-600" onClick={() => setMode('delete')}>Excluir</button>}

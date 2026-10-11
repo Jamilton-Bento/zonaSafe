@@ -58,3 +58,9 @@ A resposta traz `analysis` (`complete`, `recommendedId`, `lowestValidId`, `messa
 
 ## Painel e utilidades
 `GET /dashboard` · `GET /search?q=` · `GET/POST /notifications`, `POST /notifications/read-all` · `GET /audit` (ADMIN) · `GET/PUT /settings` (ADMIN).
+
+## IA — `/ai` (leitura: todos; ações de operação: ADMIN/TECNICO; configuração: ADMIN)
+`GET /ai/status` · `PUT /ai/config {enabled,autoCreateThreshold,draftReplies,includeGroups}` (ADMIN) · `POST /ai/resume` (ADMIN) ·
+`GET /ai/analyses` · `POST /ai/messages/:id/analyze` (reanálise manual) · `POST /ai/analyses/:id/accept {as?}` (aceitar sugestão) ·
+`GET /ai/drafts?status=PENDENTE|FALHA|ENVIADO|DESCARTADO` · `POST /ai/drafts/:id/approve {text?}` (envia ao WhatsApp) · `POST /ai/drafts/:id/discard` ·
+`POST /ai/extract-offer {text}` (rascunho de oferta a partir de texto colado; não salva nada).

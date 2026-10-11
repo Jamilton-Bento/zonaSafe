@@ -12,7 +12,7 @@ const taskSel = { id: true, number: true, title: true, priority: true, status: t
 dashboardRouter.get('/', wrap(async (_req, res) => {
   const now = new Date();
   const openTask = { status: { in: [...OPEN] } };
-  const [openTickets, pendingTasks, overdue, dueToday, direction, quotesInProgress, quotesAwaiting, recentMessages, lastTickets, urgent, wa, unreadNotifications] = await Promise.all([
+  const [openTickets, pendingTasks, overdue, dueToday, direction, quotesInProgress, quotesAwaiting, recentMessages, lastTickets, urgent, wa, unreadNotifications, pendingDrafts] = await Promise.all([
     prisma.ticket.count({ where: { status: { in: [...TICKET_OPEN] } } }),
     prisma.task.count({ where: openTask }),
     prisma.task.count({ where: { ...openTask, dueDate: { lt: now } } }),
@@ -28,6 +28,7 @@ dashboardRouter.get('/', wrap(async (_req, res) => {
     prisma.task.findMany({ where: openTask, select: taskSel, take: 200 }),
     loadState(),
     prisma.notification.count({ where: { read: false } }),
+    prisma.aiDraft.count({ where: { status: { in: ['PENDENTE', 'FALHA'] } } }),
   ]);
   const rank = { CRITICA: 0, ALTA: 1, NORMAL: 2, BAIXA: 3 } as const;
   const agora = urgent
@@ -37,7 +38,7 @@ dashboardRouter.get('/', wrap(async (_req, res) => {
     })
     .slice(0, 10);
   res.json({
-    counters: { openTickets, pendingTasks, overdueTasks: overdue, dueToday, directionRequests: direction, quotesInProgress, quotesAwaitingApproval: quotesAwaiting, unreadNotifications },
+    counters: { openTickets, pendingTasks, overdueTasks: overdue, dueToday, directionRequests: direction, quotesInProgress, quotesAwaitingApproval: quotesAwaiting, unreadNotifications, pendingDrafts },
     solveNow: agora,
     recentMessages,
     lastServed: lastTickets,

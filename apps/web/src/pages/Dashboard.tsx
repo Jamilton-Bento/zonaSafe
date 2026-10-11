@@ -21,6 +21,7 @@ export default function Dashboard() {
     ['Solicitações da diretoria', c.directionRequests, '/tarefas', 'text-purple-700'],
     ['Orçamentos em andamento', c.quotesInProgress, '/orcamentos', 'text-slate-800'],
     ['Aguardando aprovação', c.quotesAwaitingApproval, '/orcamentos', 'text-slate-800'],
+    ['Respostas da IA para aprovar', c.pendingDrafts, '/assistente', c.pendingDrafts ? 'text-amber-600' : 'text-slate-800'],
   ];
   const [connLabel, connTone] = CONNECTION[data.whatsapp.connection] ?? CONNECTION.unknown;
   return (

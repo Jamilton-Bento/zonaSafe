@@ -1,5 +1,6 @@
 import { prisma } from '../../db';
 import { clearQr, patchState, loadState, setQr } from './state';
+import { enqueueAnalysis } from '../ai/analyzer';
 
 export type Result = 'processed' | 'ignored';
 
@@ -112,8 +113,9 @@ async function upsertMessage(instance: string, data: any, edited: boolean): Prom
     update: { lastMessageAt: sentAt, ...(!isGroup && contact ? { contactId: contact.id } : {}) },
   });
 
+  let created;
   try {
-    await prisma.message.create({
+    created = await prisma.message.create({
       data: {
         externalId: edited ? targetId : externalId, instance, conversationId: conv.id,
         direction: fromMe ? 'SAIDA' : 'ENTRADA', type: content.type, body: content.body,
@@ -125,6 +127,9 @@ async function upsertMessage(instance: string, data: any, edited: boolean): Prom
     if (e?.code === 'P2002') return 'ignored'; // duplicata já registrada
     throw e;
   }
-  if (!fromMe) await patchState({ lastMessageAt: sentAt.toISOString() });
+  if (!fromMe) {
+    await patchState({ lastMessageAt: sentAt.toISOString() });
+    if (content.body) enqueueAnalysis(created.id); // a fila ignora se a IA estiver desativada
+  }
   return 'processed';
 }

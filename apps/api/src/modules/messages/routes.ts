@@ -12,6 +12,7 @@ const include = {
   conversation: { select: { id: true, title: true, remoteJid: true, isGroup: true, contact: { select: { id: true, name: true, company: { select: { name: true } } } } } },
   task: { select: { id: true, number: true, title: true, status: true } },
   ticket: { select: { id: true, number: true, title: true, status: true } },
+  aiAnalysis: { select: { id: true, status: true, intent: true, confidence: true, summary: true, action: true, error: true } },
 } satisfies Prisma.MessageInclude;
 
 messagesRouter.get('/', wrap(async (req, res) => {
