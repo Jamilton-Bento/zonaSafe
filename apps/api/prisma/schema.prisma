@@ -1,0 +1,460 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TECNICO
+  LEITOR
+}
+
+enum TaskStatus {
+  NOVA
+  PENDENTE
+  EM_ANDAMENTO
+  AGUARDANDO_RETORNO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum Priority {
+  BAIXA
+  NORMAL
+  ALTA
+  CRITICA
+}
+
+enum TicketStatus {
+  NOVO
+  TRIAGEM
+  PENDENTE
+  EM_ANDAMENTO
+  AGUARDANDO_SOLICITANTE
+  AGUARDANDO_FORNECEDOR
+  CONCLUIDO
+  CANCELADO
+}
+
+enum TicketCategory {
+  HARDWARE
+  SOFTWARE
+  REDE
+  INTERNET
+  SERVIDORES
+  SISTEMAS_EMPRESARIAIS
+  IMPRESSORAS
+  ACESSOS
+  EMAIL
+  TELEFONIA
+  COMPRAS
+  OUTROS
+}
+
+enum MessageDirection {
+  ENTRADA
+  SAIDA
+}
+
+enum MessageProcessing {
+  PENDENTE
+  ANALISADA
+  IGNORADA
+  CONVERTIDA
+}
+
+enum QuoteStatus {
+  RASCUNHO
+  EM_PESQUISA
+  AGUARDANDO_APROVACAO
+  APROVADO
+  REPROVADO
+  CANCELADO
+}
+
+enum ApprovalDecision {
+  APROVADO
+  REPROVADO
+}
+
+enum ReportType {
+  TAREFAS_PENDENTES
+  TAREFAS_ATRASADAS
+  CHAMADOS_ABERTOS
+  ATENDIMENTOS_CONCLUIDOS
+  ORCAMENTOS_AGUARDANDO_APROVACAO
+}
+
+enum ReportFrequency {
+  DIARIA
+  SEMANAL
+  MENSAL
+}
+
+enum ReportRunStatus {
+  SUCESSO
+  FALHA
+  IGNORADO
+}
+
+enum WebhookStatus {
+  RECEBIDO
+  PROCESSADO
+  IGNORADO
+  FALHA
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(TECNICO)
+  active       Boolean  @default(true)
+  failedLogins Int      @default(0)
+  lockedUntil  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tasks   Task[]   @relation("TaskAssignee")
+  tickets Ticket[] @relation("TicketAssignee")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  cnpj      String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches Branch[]
+  contacts Contact[]
+  tasks    Task[]
+  tickets  Ticket[]
+  quotes   QuoteRequest[]
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  city      String?
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  contacts Contact[]
+  tasks    Task[]
+  tickets  Ticket[]
+  quotes   QuoteRequest[]
+
+  @@unique([companyId, name])
+}
+
+model Contact {
+  id         String   @id @default(cuid())
+  name       String
+  phone      String?  // somente dígitos com DDI, ex.: 5511999999999
+  email      String?
+  jobTitle   String?
+  isDirector Boolean  @default(false)
+  companyId  String?
+  branchId   String?
+  notes      String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company       Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  conversations Conversation[]
+  tasks         Task[]
+  tickets       Ticket[]
+  quotes        QuoteRequest[]
+
+  @@index([phone])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  website   String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  offers QuoteOffer[]
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  remoteJid   String   @unique // JID do WhatsApp (contato ou grupo)
+  isGroup     Boolean  @default(false)
+  title       String?
+  contactId   String?
+  lastMessageAt DateTime?
+  createdAt   DateTime @default(now())
+
+  contact  Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  messages Message[]
+}
+
+model Message {
+  id             String            @id @default(cuid())
+  externalId     String            // key.id original do WhatsApp
+  instance       String
+  conversationId String
+  direction      MessageDirection  @default(ENTRADA)
+  type           String            // text, image, audio, document, video, sticker, other
+  body           String?
+  senderJid      String?
+  senderName     String?
+  sentAt         DateTime
+  edited         Boolean           @default(false)
+  processing     MessageProcessing @default(PENDENTE)
+  analyzedAt     DateTime?
+  taskId         String?
+  ticketId       String?
+  createdAt      DateTime          @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  task         Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  ticket       Ticket?      @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@unique([instance, externalId])
+  @@index([sentAt])
+  @@index([conversationId, sentAt])
+}
+
+model WebhookEvent {
+  id          String        @id @default(cuid())
+  dedupeKey   String        @unique
+  event       String
+  instance    String?
+  status      WebhookStatus @default(RECEBIDO)
+  error       String?
+  attempts    Int           @default(0)
+  payload     Json
+  receivedAt  DateTime      @default(now())
+  processedAt DateTime?
+
+  @@index([status])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  number      Int        @unique @default(autoincrement())
+  title       String
+  description String?
+  requesterId String?
+  companyId   String?
+  branchId    String?
+  category    TicketCategory @default(OUTROS)
+  priority    Priority   @default(NORMAL)
+  assigneeId  String?
+  status      TaskStatus @default(NOVA)
+  dueDate     DateTime?
+  notes       String?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  requester Contact? @relation(fields: [requesterId], references: [id], onDelete: SetNull)
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  assignee  User?    @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  messages  Message[]
+
+  @@index([status, dueDate])
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  number      Int            @unique @default(autoincrement())
+  title       String
+  description String?
+  requesterId String?
+  companyId   String?
+  branchId    String?
+  category    TicketCategory @default(OUTROS)
+  priority    Priority       @default(NORMAL)
+  assigneeId  String?
+  status      TicketStatus   @default(NOVO)
+  dueDate     DateTime?
+  solution    String?
+  openedAt    DateTime       @default(now())
+  closedAt    DateTime?
+  updatedAt   DateTime       @updatedAt
+
+  requester Contact? @relation(fields: [requesterId], references: [id], onDelete: SetNull)
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  assignee  User?    @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  comments  TicketComment[]
+  messages  Message[]
+
+  @@index([status, dueDate])
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String?
+  authorName String
+  body      String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+// Histórico genérico de alterações (tarefas e chamados)
+model HistoryEntry {
+  id         String   @id @default(cuid())
+  entityType String   // "task" | "ticket" | "quote"
+  entityId   String
+  userId     String?
+  userName   String?
+  action     String
+  field      String?
+  oldValue   String?
+  newValue   String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  kind      String
+  title     String
+  body      String?
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model QuoteRequest {
+  id            String      @id @default(cuid())
+  number        Int         @unique @default(autoincrement())
+  requesterId   String?
+  companyId     String?
+  branchId      String?
+  product       String
+  quantity      Int         @default(1)
+  specs         String
+  justification String?
+  dueDate       DateTime?
+  status        QuoteStatus @default(RASCUNHO)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  requester Contact? @relation(fields: [requesterId], references: [id], onDelete: SetNull)
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  offers    QuoteOffer[]
+  approvals QuoteApproval[]
+}
+
+model QuoteOffer {
+  id             String   @id @default(cuid())
+  quoteId        String
+  supplierId     String?
+  supplierName   String   // texto livre caso o fornecedor não esteja cadastrado
+  product        String
+  brandModel     String?
+  specs          String?
+  unitPriceCents Int
+  quantity       Int
+  shippingCents  Int      @default(0)
+  totalCents     Int      // calculado no servidor: unit*qtd + frete
+  deliveryDays   Int?
+  warranty       String?
+  availability   String?
+  url            String?
+  meetsSpecs     Boolean  @default(true) // ofertas que não atendem não podem ser recomendadas
+  consultedAt    DateTime
+  createdAt      DateTime @default(now())
+
+  quote    QuoteRequest @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  supplier Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+}
+
+model QuoteApproval {
+  id        String           @id @default(cuid())
+  quoteId   String
+  offerId   String?
+  decision  ApprovalDecision
+  approver  String
+  notes     String?
+  decidedAt DateTime         @default(now())
+
+  quote QuoteRequest @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+}
+
+model ReportSchedule {
+  id            String          @id @default(cuid())
+  name          String
+  type          ReportType
+  destinationJid String         // grupo/contato destinatário (JID)
+  frequency     ReportFrequency
+  hour          Int
+  minute        Int             @default(0)
+  weekday       Int?            // 0-6 para SEMANAL
+  monthDay      Int?            // 1-28 para MENSAL
+  active        Boolean         @default(false)
+  tested        Boolean         @default(false) // só dispara automático após teste manual bem-sucedido
+  failureCount  Int             @default(0)
+  pausedReason  String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  runs ReportRun[]
+}
+
+model ReportRun {
+  id         String          @id @default(cuid())
+  scheduleId String
+  slotKey    String          // ex.: "2026-10-11T08:00" — impede execução dupla do mesmo horário
+  status     ReportRunStatus
+  trigger    String          // "agendado" | "manual" | "teste"
+  detail     String?
+  startedAt  DateTime        @default(now())
+  finishedAt DateTime?
+
+  schedule ReportSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, slotKey])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userEmail String?
+  action    String
+  entity    String?
+  entityId  String?
+  detail    String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
